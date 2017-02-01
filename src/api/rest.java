@@ -24,8 +24,7 @@ public class rest {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response handleJson(String data) throws Exception{
 		System.out.println("data : " + data);
-		CPE = new ConnectionPoolingBean();
-		CPE.ejbCreate();
+
 		
 		return Response.status(200).entity(data).build();
 		//TODO

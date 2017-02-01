@@ -1,71 +1,76 @@
 package jdbc;
 
+import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import javax.sql.DataSource;
 
+import org.json.simple.JSONObject;
+
 public class ConnectionPoolingBean {
-
-	// ...
-
-	public void ejbCreate() throws Exception {
+	private DataSource ds = null;
+	private Context ctx = null;
+	
+	public ConnectionPoolingBean() throws NamingException{
 		ctx = new InitialContext();
-		ds = (DataSource) ctx.lookup("jdbc/fastCoffeeDB");
+		ds = (DataSource) ctx.lookup("jdbc/fastCoffeeDB"); //TODO - replace with WAS values
 	}
+	
+	public Connection getConnction(String username, String password){
+		Connection conToDB = null;
+		try{
+			conToDB = ds.getConnection(username, password);
+			conToDB.setAutoCommit(false);
+		}catch(SQLException SQLE){
+			SQLE.printStackTrace();
+		}
+		if(conToDB != null){
+			return conToDB;
+		}else{
+			return null;
+		}
+			 
+		
+	} 
 
-	// public void updatePrice(float price, String cofName,
-	// String username, String password)
-	// throws SQLException{
-	//
-	// Connection con = null;
-	// PreparedStatement pstmt;
-	// try {
-	// con = ds.getConnection(username, password);
-	// con.setAutoCommit(false);
-	// pstmt = con.prepareStatement("UPDATE COFFEES " +
-	// "SET PRICE = ? " +
-	// "WHERE COF_NAME = ?");
-	// pstmt.setFloat(1, price);
-	// pstmt.setString(2, cofName);
-	// pstmt.executeUpdate();
-	//
-	// con.commit();
-	// pstmt.close();
-	//
-	// } finally {
-	// if (con != null)
-	// con.close();
-	// }
-	// }
-	public void insert(Data data, String username, String password)
+	public void insert(Connection conToDB, JSONObject obj )
 			throws SQLException {
-		Connection con = null;
+		
 		PreparedStatement pstmt;
 		try {
-			con = ds.getConnection(username, password);
-			con.setAutoCommit(false);
-			pstmt = con
-					.prepareStatement("insert into  temp(id, name, position) "
-							+ "VALUES (?, ?, ?)");
-			pstmt.setInt(1, data.getM_id());
-			pstmt.setString(1, data.getM_name());
-			pstmt.setString(1, data.getM_position());
+			
+			PreparedStatement stmt = conToDB.prepareStatement("INSERT INTO JSON VALUES (?)");
 
-			con.commit();
-			pstmt.close();
+			  while (true) {
+			      // Create a new Clob instance as I'm inserting into a CLOB data type
+			      Clob clob = conToDB.createClob();
+			      // Store my JSON into the CLOB
+			      clob.setString(1, obj.toString());
+			      // Set clob instance as input parameter for INSERT statement
+			      stmt.setClob(1, clob);
+			      // Execute the INSERT statement
+			      int affectedRows = stmt.executeUpdate();
+			      // Free up resource
+			      clob.free();
+			      // Commit inserted row to the database
+			      conToDB.commit();
+			      System.out.println(affectedRows + " row(s) inserted.");
+			  }
+			
+			
 		} catch (SQLException SQLE) {
 			SQLE.printStackTrace();
 		} finally {
-			if (con != null)
-				con.close();
+			if (conToDB != null)
+				conToDB.close();
 		}
 
 	}
 
-	private DataSource ds = null;
-	private Context ctx = null;
+
 }
